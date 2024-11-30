@@ -1,0 +1,67 @@
+---
+title: "p8105_hw6_xs2569"
+author: "XunSun"
+date: "`r Sys.Date()`"
+output: github_document
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(broom)
+library(ggridges)
+library(dplyr)
+set.seed(1)
+```
+
+### Problem 1
+### Problem 2
+```{r homicide dataset, warning=FALSE}
+raw_homicide = read.csv("./data/homicide-data.csv")
+
+#viewing variables
+head(raw_homicide)
+view(raw_homicide)
+```
+The data set has 52,179 observations and 12 columns. 
+
+```{r, warning=FALSE}
+#creating a city_state variable
+washington_df = raw_homicide |>
+  mutate(
+    city_state = paste(city, state, sep=", "),
+    solved = ifelse(disposition == "Closed by arrest", 1, 0)) |>
+  filter(
+    !(city_state %in% c("Dallas, TX", "Phoenix, AZ", "Kansas City, MO", "Tulsa, AL")
+    ),
+    victim_race %in% c("Black", "White")) |>
+  mutate(
+    victim_age = as.numeric(victim_age)) |>
+  drop_na() |>
+  mutate(
+  victim_sex = fct_relevel(victim_sex, "Male"))
+view(washington_df)
+```
+
+
+
+**2B. Baltimore, MD**
+```{r Baltimore, warning=FALSE, message=FALSE}
+baltimore_glm = washington_df %>% 
+  filter(city_state == "Baltimore, MD") %>%  
+  glm(solved ~ victim_age + victim_race + victim_sex, family = binomial(), data = .)
+summary(baltimore_glm)
+
+CI = confint(baltimore_glm) %>% 
+  as.data.frame() %>% 
+  rownames_to_column(var = "term") %>%
+  rename("conf_low" = "2.5 %", "conf_high" = "97.5 %")
+CI
+
+baltimore_data = left_join(tidy_baltimore, CI, by = "term") %>% 
+  mutate(OR = exp(estimate)) %>% 
+  rename("log_OR" = "estimate") %>% 
+  select(term, OR, conf_low, conf_high) %>% 
+  filter(term == "victim_sexMale")
+  
+baltimore_data
+```
