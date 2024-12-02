@@ -6,6 +6,12 @@ output: github_document
 ---
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+# Load necessary libraries
+library(dplyr)
+library(tidyr)
+library(purrr)
+library(forcats)
+library(ggplot2)
 library(tidyverse)
 library(broom)
 library(ggridges)
@@ -13,7 +19,6 @@ library(dplyr)
 set.seed(1)
 ```
 
-### Problem 1
 ### Problem 2
 ```{r homicide dataset, warning=FALSE}
 raw_homicide = read.csv("./data/homicide-data.csv")
@@ -43,25 +48,66 @@ view(washington_df)
 ```
 
 
+```{r}
+fit_logistic = 
+  washington_df |> 
+  glm(solved ~ victim_sex + victim_race + victim_age, data = _, family = binomial()) 
 
-**2B. Baltimore, MD**
-```{r Baltimore, warning=FALSE, message=FALSE}
-baltimore_glm = washington_df %>% 
-  filter(city_state == "Baltimore, MD") %>%  
-  glm(solved ~ victim_age + victim_race + victim_sex, family = binomial(), data = .)
-summary(baltimore_glm)
-
-CI = confint(baltimore_glm) %>% 
-  as.data.frame() %>% 
-  rownames_to_column(var = "term") %>%
-  rename("conf_low" = "2.5 %", "conf_high" = "97.5 %")
-CI
-
-baltimore_data = left_join(tidy_baltimore, CI, by = "term") %>% 
-  mutate(OR = exp(estimate)) %>% 
-  rename("log_OR" = "estimate") %>% 
-  select(term, OR, conf_low, conf_high) %>% 
-  filter(term == "victim_sexMale")
-  
-baltimore_data
+fit_logistic |> 
+  broom::tidy() |> 
+  mutate(
+    OR = exp(estimate),
+    CI_upper = exp((estimate) + 1.96*(std.error)),
+    CI_lower = exp((estimate) - 1.96*(std.error))) |>
+  select(term, log_OR = estimate, OR, p.value, CI_upper, CI_lower) |> 
+  knitr::kable(digits = 3)
 ```
+The odds of a homicide being solved when the victim was a male was 1.661 (95% CI: 1.567, 1.760) times the odds of a homicide being solved when the victim was a female, controlling for the victim's age and race. The beta estimate for this adjusted odds ratio is 0.507. 
+
+```{r}
+nest_glm_city_state =
+  washington_df |> 
+  nest(data = -city_state) |> 
+  mutate(
+    models = map(data, \(df) glm(solved ~ victim_sex + victim_race + victim_age, data = df)),
+    results = map(models, broom::tidy)) |> 
+  select(-data, -models) |> 
+  unnest(results)
+
+nest_glm_city_state |> 
+  select(term, estimate, city_state, std.error, p.value) |>
+  mutate(
+    term = fct_inorder(term),
+    OR = exp(estimate),
+    CI_upper = exp((estimate) + 1.96*(std.error)),
+    CI_lower = exp((estimate) - 1.96*(std.error))) |> 
+  select(estimate, term, city_state, OR, CI_upper, CI_lower)|>
+  filter(
+    term == "victim_sexFemale"
+  )|>
+  pivot_wider(
+    names_from = term, values_from = estimate)|>
+  knitr::kable(digits = 3)
+```
+
+
+```{r}
+nest_glm_city_state |> 
+  filter(
+    term == "victim_sexFemale") |>
+  mutate(city_state = fct_reorder(city_state, exp(estimate))) |>
+  ggplot(aes(x = city_state, y = exp(estimate))) + 
+  geom_point() + 
+  geom_errorbar(aes(x=city_state, 
+        ymin = exp((estimate) + 1.96*(std.error)), 
+        ymax = exp((estimate) - 1.96*(std.error)))) +
+  theme(axis.text.x = element_text(angle = 80, hjust = 1)) +
+  labs(
+    title = "OR for Solving Homicides Comparing Male Victims to Female Victims by City",
+    x = "City",
+    y = "Estimated OR (with 95% CI)"
+  )
+```
+The plot highlights the variety of confidence interval widths, with wider intervals occurring at the lower and higher OR values. 
+It also makes it evident that around half of the ORs have confidence intervals that include the null value of 1, indicating that though almost all estimates are greater than 1, they are not all statistically significant. 
+
