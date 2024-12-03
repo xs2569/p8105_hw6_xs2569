@@ -51,7 +51,7 @@ washington_df = raw_homicide |>
 view(washington_df)
 ```
 
-
+####Baltimore, MD
 ```{r}
 baltimore_data = washington_df %>% 
   filter(city_state == "Baltimore, MD")
@@ -68,8 +68,10 @@ fit_logistic |>
   select(term, log_OR = estimate, OR, p.value, CI_upper, CI_lower) |> 
   knitr::kable(digits = 3)
 ```
-The odds of a homicide of Baltimore being solved when the victim was a male was 2.35 (95% CI: 3.081, 1.793) times the odds of a homicide being solved when the victim was a female, controlling for the victim's age and race. The beta estimate for this adjusted odds ratio is 0.580. 
+The odds of a homicide of Baltimore being solved when the victim was a male was 2.35, which is significant with the interval (95% CI: 3.081, 1.793) times the odds of a homicide being solved when the victim was a female, controlling for the victim's age and race. The beta estimate for this adjusted odds ratio is 0.580
+which means the odds of solving a homicide are 0.580 (or 58%) of the odds at a hypothetical baseline of 1, given: the victim is male (reference level for victim_sex), the victim is Black (reference level for victim_race) and the victim's age is at 0. 
 
+#### Each of the cities
 ```{r}
 nest_glm_city_state =
   washington_df |> 
@@ -80,6 +82,7 @@ nest_glm_city_state =
   select(-data, -models) |> 
   unnest(results)
 
+## Because the sample is large enough, we use normal disturbution and 1.96 to generate CI
 nest_glm_city_state |> 
   select(term, estimate, city_state, std.error, p.value) |>
   mutate(
@@ -115,6 +118,7 @@ nest_glm_city_state |>
   )
 ```
 The plot highlights the variety of confidence interval widths, with wider intervals occurring at the lower and higher OR values. 
+From the plot we can see all of the intervals contain the point 1.0 and there isn't any one of the upper level less than 1.0 but some of the intervals have the lower level higher than 1.0.
 It also makes it evident that around half of the ORs have confidence intervals that include the null value of 1, indicating that though almost all estimates are greater than 1, they are not all statistically significant. 
 
 
@@ -128,6 +132,7 @@ head(raw_birthweight_df)
 view(raw_birthweight_df)
 ```
 
+#### Load and clean the data
 ```{r}
 birthweight_df = raw_birthweight_df |>
   mutate(
@@ -165,6 +170,7 @@ birthweight_df = as.data.frame(birthweight_df)
 birthweight_fit = 
   birthweight_df |>
   lm(bwt ~ babysex + gaweeks + ppwt + blength + blength*gaweeks, data =_)
+summary(birthweight_fit)
 
 birthweight_fit |> 
   broom::tidy() |> 
@@ -196,6 +202,7 @@ birthweight_df |>
 length_age_fit = 
   birthweight_df |>
   lm(bwt ~ gaweeks + blength, data =_)
+summary(length_age_fit)
 
 length_age_fit |> 
   broom::tidy() |> 
@@ -211,6 +218,7 @@ length_age_fit |>
 interaction_fit = 
   birthweight_df |>
   lm(bwt ~ bhead + blength + babysex + babysex*blength + babysex*bhead + blength*bhead + blength*bhead*babysex, data =_)
+summary(interaction_fit)
 
 interaction_fit |> 
   broom::tidy() |> 
