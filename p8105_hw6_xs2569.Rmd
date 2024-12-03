@@ -68,7 +68,7 @@ fit_logistic |>
   select(term, log_OR = estimate, OR, p.value, CI_upper, CI_lower) |> 
   knitr::kable(digits = 3)
 ```
-The odds of a homicide being solved when the victim was a male was 1.661 (95% CI: 1.567, 1.760) times the odds of a homicide being solved when the victim was a female, controlling for the victim's age and race. The beta estimate for this adjusted odds ratio is 0.507. 
+The odds of a homicide of Baltimore being solved when the victim was a male was 2.35 (95% CI: 3.081, 1.793) times the odds of a homicide being solved when the victim was a female, controlling for the victim's age and race. The beta estimate for this adjusted odds ratio is 0.580. 
 
 ```{r}
 nest_glm_city_state =
